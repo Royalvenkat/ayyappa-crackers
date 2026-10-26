@@ -1,9 +1,8 @@
-import { jsPDF } from 'jspdf'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import CheckoutForm from '../components/CheckoutForm'
 import OrderSummary from '../components/OrderSummary'
-import { useCart } from '../context/CartContext'
+import { getAutoDiscount, useCart } from '../context/CartContext'
 
 const SHOP_EMAIL = 'ayyappacrackers@gmail.com'
 const ORDER_STORAGE_KEY = 'ayyappa_orders'
@@ -19,93 +18,19 @@ const loadSavedOrders = () => {
   }
 }
 
-const generateOrderPdf = ({ customerName, phone, email, alternatePhone, address, landmark, deliveryDate, deliverySlot, items, subtotal, discountAmount, finalTotal }) => {
-  const pdf = new jsPDF()
-
-  pdf.setFillColor(255, 244, 230)
-  pdf.rect(0, 0, 210, 40, 'F')
-  pdf.setTextColor(194, 65, 12)
-  pdf.setFontSize(20)
-  pdf.text('Ayyappa Crackers', 14, 20)
-  pdf.setFontSize(11)
-  pdf.setTextColor(31, 41, 55)
-  pdf.text(`Order for: ${customerName}`, 14, 30)
-
-  let y = 52
-  const addLine = (label, value) => {
-    pdf.setFont('helvetica', 'bold')
-    pdf.text(`${label}:`, 14, y)
-    pdf.setFont('helvetica', 'normal')
-    pdf.text(String(value || 'Not provided'), 60, y)
-    y += 8
-  }
-
-  addLine('Mobile', phone)
-  addLine('Email', email || 'Not provided')
-  addLine('Alternate', alternatePhone || 'Not provided')
-  addLine('Delivery Date', deliveryDate)
-  addLine('Time', deliverySlot)
-  addLine('Landmark', landmark || 'Not provided')
-
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('Address:', 14, y)
-  y += 7
-  pdf.setFont('helvetica', 'normal')
-  const addressLines = pdf.splitTextToSize(address, 170)
-  pdf.text(addressLines, 14, y)
-  y += addressLines.length * 7 + 8
-
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('Items', 14, y)
-  y += 8
-
-  items.forEach((item) => {
-    const line = `${item.name} x ${item.qty} - ${formatMoney(item.price * item.qty)}`
-    pdf.setFont('helvetica', 'normal')
-    pdf.text(line, 14, y)
-    y += 7
-  })
-
-  y += 6
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('Subtotal:', 120, y)
-  pdf.setFont('helvetica', 'normal')
-  pdf.text(formatMoney(subtotal), 165, y)
-
-  y += 8
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('Discount:', 120, y)
-  pdf.setFont('helvetica', 'normal')
-  pdf.text(formatMoney(discountAmount), 165, y)
-
-  y += 8
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('Grand Total:', 120, y)
-  pdf.setFont('helvetica', 'normal')
-  pdf.text(formatMoney(finalTotal), 165, y)
-
-  return pdf.output('datauristring')
-}
-
 const initialFormData = {
   name: '',
   phone: '',
   email: '',
-  alternatePhone: '',
   address: '',
   landmark: '',
   deliveryDate: '',
-  deliverySlot: '',
 }
 
 const Checkout = () => {
   const { cart, calculateGrandTotal, clearCart } = useCart()
   const [formData, setFormData] = useState(initialFormData)
   const [savedOrders, setSavedOrders] = useState(loadSavedOrders)
-  const [selectedCoupon, setSelectedCoupon] = useState(() => {
-    const savedCoupon = sessionStorage.getItem('selectedCoupon')
-    return savedCoupon ? JSON.parse(savedCoupon) : null
-  })
 
   if (cart.length === 0) {
     return (
@@ -125,12 +50,14 @@ const Checkout = () => {
   }
 
   const subtotal = calculateGrandTotal()
-  const discountAmount = selectedCoupon ? subtotal * (selectedCoupon.discountPercent / 100) : 0
+  const autoDiscount = getAutoDiscount(subtotal)
+  const discountAmount = autoDiscount.amount
   const finalTotal = Math.max(0, subtotal - discountAmount)
 
   const handleChange = (event) => {
     const { name, value } = event.target
-    setFormData((current) => ({ ...current, [name]: value }))
+    const updatedValue = name === 'phone' ? value.replace(/\D/g, '').slice(0, 10) : value
+    setFormData((current) => ({ ...current, [name]: updatedValue }))
   }
 
   const handleSubmit = (event) => {
@@ -140,14 +67,12 @@ const Checkout = () => {
       name,
       phone,
       email,
-      alternatePhone,
       address,
       landmark,
       deliveryDate,
-      deliverySlot,
     } = formData
 
-    if (!name.trim() || !phone.trim() || !address.trim() || !deliveryDate || !deliverySlot) {
+    if (!name.trim() || !phone.trim() || !address.trim() || !deliveryDate) {
       alert('Please fill in all required details before submitting your order.')
       return
     }
@@ -157,81 +82,58 @@ const Checkout = () => {
       return
     }
 
-    if (alternatePhone && alternatePhone.replace(/\D/g, '').length !== 10) {
-      alert('Please enter a valid 10-digit alternate number.')
-      return
-    }
-
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       alert('Please enter a valid email address.')
       return
     }
 
-    const lineItems = cart
-      .map((item) => `${item.name} × ${item.qty} = ${formatMoney(item.price * item.qty)}`)
+    const itemRows = cart
+      .map(
+        (item) => `| ${item.name} | ${item.qty} | ${formatMoney(item.price * item.qty)} |`,
+      )
       .join('\n')
 
-    const orderRows = cart
-      .map((item) => `${item.name} | Qty: ${item.qty} | ${formatMoney(item.price * item.qty)}`)
+    const customerRows = [
+      `| Name | ${name.trim()} |`,
+      `| Phone | ${phone} |`,
+      `| Email | ${email || 'Not provided'} |`,
+      `| Address | ${address} |`,
+      landmark?.trim() ? `| Landmark | ${landmark.trim()} |` : null,
+      `| Delivery Date | ${deliveryDate} |`,
+    ]
+      .filter(Boolean)
       .join('\n')
 
-    const landmarkText = landmark?.trim() ? `\nLandmark: ${landmark.trim()}` : ''
-    const orderText = `Ayyappa Crackers Order Confirmation\n\nCustomer Name: ${name.trim()}\nMobile Number: ${phone}\nEmail: ${email || 'Not provided'}\nAlternate Number: ${alternatePhone || 'Not provided'}\nAddress: ${address}\n${landmarkText}\nDelivery Date: ${deliveryDate}\nTime: ${deliverySlot}\n\nOrder Items:\n${lineItems}\n\nSubtotal: ${formatMoney(subtotal)}\nDiscount: ${formatMoney(discountAmount)}\nGrand Total: ${formatMoney(finalTotal)}\n\nThis order has been submitted successfully. Thank you for shopping with Ayyappa Crackers.`
+    const orderText = `Ayyappa Crackers Order Confirmation\n\nCustomer Details:\n| Field | Value |\n| --- | --- |\n${customerRows}\n\nOrder Items:\n| Item | Qty | Amount |\n| --- | --- | --- |\n${itemRows}\n\n| Subtotal | ${formatMoney(subtotal)} |\n| Discount | ${formatMoney(discountAmount)} |\n| Grand Total | ${formatMoney(finalTotal)} |\n\nThis order has been submitted successfully. Thank you for shopping with Ayyappa Crackers.`
 
     const orderId = `AYP-${Date.now().toString().slice(-8)}`
-    const pdfDataUrl = generateOrderPdf({
-      customerName: name.trim(),
-      phone,
-      email,
-      alternatePhone,
-      address,
-      landmark: landmark?.trim() || 'Not provided',
-      deliveryDate,
-      deliverySlot,
-      items: cart,
-      subtotal,
-      discountAmount,
-      finalTotal,
-    })
-
     const orderRecord = {
       id: orderId,
       customerName: name.trim(),
       phone,
       email: email || 'Not provided',
-      alternatePhone: alternatePhone || 'Not provided',
       address,
       landmark: landmark?.trim() || 'Not provided',
       deliveryDate,
-      deliverySlot,
       subtotal,
       discountAmount,
       finalTotal,
       createdAt: new Date().toISOString(),
-      pdf: pdfDataUrl,
     }
 
     const updatedOrders = [orderRecord, ...savedOrders]
     setSavedOrders(updatedOrders)
     localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(updatedOrders))
 
-    const cleanWhatsAppText = `Order Confirmation\nOrder ID: ${orderId}\n\nCustomer: ${name.trim()}\nPhone: ${phone}\nEmail: ${email || 'Not provided'}\nAddress: ${address}\n${landmarkText}\nDelivery Date: ${deliveryDate}\nTime: ${deliverySlot}\n\nItem | Qty | Amount\n${orderRows}\n\nSubtotal: ${formatMoney(subtotal)}\nDiscount: ${formatMoney(discountAmount)}\nGrand Total: ${formatMoney(finalTotal)}`
+    const whatsappItemLines = cart
+      .map(
+        (item) =>
+          `- *${item.name}* | Qty: ${item.qty} | Amount: *${formatMoney(item.price * item.qty)}*`,
+      )
+      .join('\n')
+    const cleanWhatsAppText = `Order Confirmation\nOrder ID: ${orderId}\n\nCustomer Details\nName: *${name.trim()}*\nMobile: *${phone}*\nEmail: ${email || 'Not provided'}\nAddress: ${address}\n${landmark?.trim() ? `Landmark: ${landmark.trim()}\n` : ''}Delivery Date: ${deliveryDate}\n\nOrder Items\n${whatsappItemLines}\n\nSubtotal: *${formatMoney(subtotal)}*\nDiscount: *${formatMoney(discountAmount)}*\nGrand Total: *${formatMoney(finalTotal)}*`
     const whatsappUrl = `https://wa.me/8801235761?text=${encodeURIComponent(cleanWhatsAppText)}`
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
-
-    if (pdfDataUrl) {
-      const pdfWindow = window.open(pdfDataUrl, '_blank', 'noopener,noreferrer')
-      if (pdfWindow) {
-        pdfWindow.focus()
-      }
-
-      const link = document.createElement('a')
-      link.href = pdfDataUrl
-      link.download = `Ayyappa-Crackers-Order-${orderId}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
 
     const customerMailTo = email
       ? `mailto:${email}?subject=${encodeURIComponent('Your order is placed - Ayyappa Crackers')}&body=${encodeURIComponent(orderText)}`
@@ -245,9 +147,7 @@ const Checkout = () => {
     window.open(shopMailTo, '_blank', 'noopener,noreferrer')
 
     clearCart()
-    sessionStorage.removeItem('selectedCoupon')
     setFormData(initialFormData)
-    setSelectedCoupon(null)
   }
 
   return (
@@ -259,7 +159,19 @@ const Checkout = () => {
         </section>
 
         <aside>
-          <OrderSummary cart={cart} subtotal={subtotal} buttonText="" />
+          <OrderSummary
+            cart={cart}
+            subtotal={subtotal}
+            discountAmount={discountAmount}
+            discountPercent={autoDiscount.percent}
+            discountLabel={autoDiscount.label}
+            nextTierMessage={
+              autoDiscount.nextTier
+                ? `Add ₹${autoDiscount.remainingToUnlock.toLocaleString('en-IN')} more to unlock ${autoDiscount.nextTier.percent}% off`
+                : 'Best discount unlocked'
+            }
+            buttonText=""
+          />
         </aside>
       </div>
 
@@ -268,7 +180,7 @@ const Checkout = () => {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#B45309] dark:text-[#FFD54F]">Saved Orders</p>
-              <h2 className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-50">PDF Order Table</h2>
+              <h2 className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-50">Order History</h2>
             </div>
           </div>
 
@@ -281,7 +193,6 @@ const Checkout = () => {
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Phone</th>
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Date</th>
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Total</th>
-                  <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">PDF</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-orange-100 dark:divide-slate-700">
@@ -292,17 +203,6 @@ const Checkout = () => {
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{order.phone}</td>
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{order.deliveryDate}</td>
                     <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">{formatMoney(order.finalTotal)}</td>
-                    <td className="px-4 py-3">
-                      <a
-                        href={order.pdf}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex rounded-full bg-[#FF6B00] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#E63946]"
-                        download={`Ayyappa-Crackers-Order-${order.id}.pdf`}
-                      >
-                        Save PDF
-                      </a>
-                    </td>
                   </tr>
                 ))}
               </tbody>

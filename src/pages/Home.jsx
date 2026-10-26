@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { categories, comboPacks, getCategorySlug } from '../data/products'
 
-const categoryIcons = ['🎇', '✨', '🌼', '🌀', '💥', '🎁', '💣', '🚀', '🎊']
+const categoryIcons = ['🎇', '✨', '🌼', '🌀', '💥', '🎁', '💣', '🚀', '🦚', '🎊', '🎉']
 
 const Home = () => {
   const location = useLocation()

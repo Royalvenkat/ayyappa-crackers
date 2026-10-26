@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CartItem from '../components/CartItem'
 import OrderSummary from '../components/OrderSummary'
-import { getEligibleCoupons, useCart } from '../context/CartContext'
+import { AUTO_DISCOUNT_TIERS, getAutoDiscount, useCart } from '../context/CartContext'
 
 const Cart = () => {
   const {
@@ -15,22 +14,8 @@ const Cart = () => {
   } = useCart()
 
   const subtotal = calculateGrandTotal()
-  const [selectedCoupon, setSelectedCoupon] = useState(() => {
-    const savedCoupon = sessionStorage.getItem('selectedCoupon')
-    return savedCoupon ? JSON.parse(savedCoupon) : null
-  })
-
-  const eligibleCoupons = getEligibleCoupons(cart)
-  const discountAmount = selectedCoupon ? subtotal * (selectedCoupon.discountPercent / 100) : 0
-
-  useEffect(() => {
-    if (selectedCoupon) {
-      sessionStorage.setItem('selectedCoupon', JSON.stringify(selectedCoupon))
-      return
-    }
-
-    sessionStorage.removeItem('selectedCoupon')
-  }, [selectedCoupon])
+  const autoDiscount = getAutoDiscount(subtotal)
+  const discountAmount = autoDiscount.amount
 
   if (cart.length === 0) {
     return (
@@ -81,49 +66,38 @@ const Cart = () => {
 
       <aside className="space-y-4">
         <div className="rounded-3xl border border-orange-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <h2 className="text-xl font-black text-slate-900 dark:text-slate-50">Available coupons</h2>
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Choose the discount based on your cart value and any combo pack added.
-          </p>
-
-          <div className="mt-4 space-y-2">
-            {eligibleCoupons.length > 0 ? (
-              eligibleCoupons.map((coupon) => (
-                <button
-                  key={coupon.code}
-                  type="button"
-                  onClick={() => setSelectedCoupon(coupon)}
-                  className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left transition ${
-                    selectedCoupon?.code === coupon.code
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm dark:border-emerald-500 dark:bg-emerald-900/25 dark:text-emerald-200'
-                      : 'border-orange-100 bg-white text-slate-700 hover:border-orange-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100'
-                  }`}
-                >
-                  <span>
-                    <span className="block text-sm font-bold">{coupon.label}</span>
-                    <span className="text-xs">{coupon.code}</span>
-                  </span>
-                  <span className="text-xs font-bold">{coupon.discountPercent}% OFF</span>
-                </button>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-orange-200 p-3 text-sm text-slate-600 dark:border-slate-600 dark:text-slate-300">
-                No coupon is available for this cart right now.
-              </div>
-            )}
+          <h2 className="text-xl font-black text-slate-900 dark:text-slate-50">Auto discount</h2>
+          <div className="mt-3 flex items-center gap-2 rounded-2xl border border-orange-200 bg-gradient-to-r from-[#fff7ed] to-[#ffedd5] p-3 text-sm font-semibold text-[#B45309] dark:border-slate-600 dark:from-slate-700 dark:to-slate-800 dark:text-[#FFD54F]">
+            <span className="train-engine">🚂</span>
+            <span>{autoDiscount.percent > 0 ? `${autoDiscount.percent}% discount active` : autoDiscount.label}</span>
           </div>
 
-          {selectedCoupon && (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">
-              Selected coupon: {selectedCoupon.label} • ₹{discountAmount.toFixed(0)} discount
-            </div>
-          )}
+          <div className="discount-tier-track mt-4 text-sm">
+            {AUTO_DISCOUNT_TIERS.map((tier) => {
+              const isActive = subtotal >= tier.min
+
+              return (
+                <div key={tier.min} className="discount-tier-step">
+                  <div className={`discount-tier-line ${isActive ? 'active' : ''}`} />
+                  <div className={`discount-tier-dot ${isActive ? 'active' : ''}`}>
+                    {tier.percent}%
+                  </div>
+                  <div className={`discount-tier-label ${isActive ? 'active' : ''}`}>
+                    {tier.min >= 10000 ? '10K+' : tier.min >= 5000 ? '5K+' : '1K+'}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         <OrderSummary
           cart={cart}
           subtotal={subtotal}
           discountAmount={discountAmount}
+          discountPercent={autoDiscount.percent}
+          discountLabel={autoDiscount.label}
+          nextTierMessage={autoDiscount.nextTier ? `Add ₹${autoDiscount.remainingToUnlock.toLocaleString('en-IN')} more to unlock ${autoDiscount.nextTier.percent}% off` : 'Best discount unlocked'}
           buttonText="Continue to checkout"
         />
       </aside>

@@ -25,6 +25,9 @@ const CheckoutForm = ({ formData, onChange, onSubmit }) => (
           name="phone"
           value={formData.phone}
           onChange={onChange}
+          inputMode="numeric"
+          pattern="[0-9]{10}"
+          maxLength={10}
           className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50 dark:placeholder:text-slate-300"
           aria-label="Mobile number"
           required
@@ -32,33 +35,18 @@ const CheckoutForm = ({ formData, onChange, onSubmit }) => (
       </label>
     </div>
 
-    <div className="grid gap-4 md:grid-cols-2">
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Email</span>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={onChange}
-          className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50 dark:placeholder:text-slate-300"
-          aria-label="Email"
-          placeholder="Optional"
-        />
-      </label>
-
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Alternate Number</span>
-        <input
-          type="tel"
-          name="alternatePhone"
-          value={formData.alternatePhone}
-          onChange={onChange}
-          className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50 dark:placeholder:text-slate-300"
-          aria-label="Alternate number"
-          placeholder="Optional"
-        />
-      </label>
-    </div>
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Email</span>
+      <input
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={onChange}
+        className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50 dark:placeholder:text-slate-300"
+        aria-label="Email"
+        placeholder="Optional"
+      />
+    </label>
 
     <label className="block">
       <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Address</span>
@@ -86,38 +74,19 @@ const CheckoutForm = ({ formData, onChange, onSubmit }) => (
       />
     </label>
 
-    <div className="grid gap-4 md:grid-cols-2">
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Date</span>
-        <input
-          type="date"
-          name="deliveryDate"
-          value={formData.deliveryDate}
-          onChange={onChange}
-          className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50"
-          aria-label="Delivery date"
-          min={new Date().toISOString().split('T')[0]}
-          required
-        />
-      </label>
-
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Time</span>
-        <select
-          name="deliverySlot"
-          value={formData.deliverySlot}
-          onChange={onChange}
-          className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50"
-          aria-label="Delivery time"
-          required
-        >
-          <option value="">Select time</option>
-          <option value="Morning">Morning</option>
-          <option value="Afternoon">Afternoon</option>
-          <option value="Evening">Evening</option>
-        </select>
-      </label>
-    </div>
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Date</span>
+      <input
+        type="date"
+        name="deliveryDate"
+        value={formData.deliveryDate}
+        onChange={onChange}
+        className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50"
+        aria-label="Delivery date"
+        min={new Date().toISOString().split('T')[0]}
+        required
+      />
+    </label>
 
     <button
       type="submit"
