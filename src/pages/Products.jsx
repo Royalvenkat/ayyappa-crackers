@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import ProductCard from '../components/ProductCard'
+import { useCart } from '../context/CartContext'
 import { categories, comboPacks, getCategorySlug, products } from '../data/products'
 
 const Products = () => {
   const location = useLocation()
   const navigate = useNavigate()
+  const { addToCart } = useCart()
   const [selectedCategory, setSelectedCategory] = useState('Red Bijili')
   const [searchTerm, setSearchTerm] = useState('')
+  const [addedComboId, setAddedComboId] = useState(null)
 
   useEffect(() => {
     const categoryFromUrl = new URLSearchParams(location.search).get('category')
@@ -63,6 +66,20 @@ const Products = () => {
 
     const slug = getCategorySlug(value)
     navigate(`/products?category=${slug}`)
+  }
+
+  const handleAddCombo = (combo) => {
+    addToCart({
+      id: combo.id,
+      name: combo.name,
+      category: 'Combo Packs',
+      price: combo.price,
+      qty: 1,
+      emoji: '🎁',
+    })
+
+    setAddedComboId(combo.id)
+    window.setTimeout(() => setAddedComboId(null), 450)
   }
 
   const filterOptions = categories
@@ -147,9 +164,12 @@ const Products = () => {
                       </div>
                       <button
                         type="button"
-                        className="rounded-full bg-[#FF6B00] px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#E63946]"
+                        onClick={() => handleAddCombo(combo)}
+                        className={`rounded-full px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#E63946] ${
+                          addedComboId === combo.id ? 'animate-[bounce_0.45s_ease-in-out] bg-[#16A34A] hover:bg-[#15803D]' : 'bg-[#FF6B00]'
+                        }`}
                       >
-                        Add Combo
+                        {addedComboId === combo.id ? 'Added ✓' : 'Add Combo'}
                       </button>
                     </div>
                     <ul className="mt-4 grid gap-2 text-sm text-slate-700 dark:text-slate-200 md:grid-cols-2">
