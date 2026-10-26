@@ -207,10 +207,6 @@ export const products = [
   { id: 94, name: 'AND POPO', category: 'Special Items', quantity: '1', price: 550, emoji: '🎊' },
   { id: 95, name: 'ST 2PC Fog', category: 'Special Items', quantity: '1', price: 450, emoji: '🎊' },
 
-  { id: 96, name: 'Premium Flower Pot Combo', category: 'Special Items', quantity: '1 set', price: 1800, emoji: '🎊' },
-  { id: 97, name: 'Comet Deluxe Set', category: 'Special Items', quantity: '1 set', price: 2200, emoji: '🎊' },
-  { id: 98, name: 'Festival Special Box', category: 'Special Items', quantity: '1 box', price: 2999, emoji: '🎊' },
-  { id: 99, name: 'Luxury Crackers Pack', category: 'Special Items', quantity: '1 box', price: 4200, emoji: '🎊' },
 ]
 
 export default products
