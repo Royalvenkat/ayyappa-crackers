@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import { CartProvider } from './context/CartContext'
@@ -8,10 +9,21 @@ import CategoryPage from './pages/CategoryPage'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 
+function ScrollToTop() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+
+  return null
+}
+
 function App() {
   return (
     <CartProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <div className="min-h-screen bg-[#FFF8F0] text-[#1F2937] transition-colors duration-300 dark:bg-[#0F172A] dark:text-[#F8FAFC]">
           <Navbar />
           <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
