@@ -214,7 +214,9 @@ const Products = () => {
                     <span className="text-xl font-black text-slate-900 dark:text-slate-50">₹{product.price}</span>
                     <button
                       type="button"
+                      onClick={() => handleCategoryChange(product.category)}
                       className="rounded-full bg-[#FF6B00] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#E63946]"
+                      aria-label={`View more ${product.category} products like ${product.name}`}
                     >
                       View
                     </button>

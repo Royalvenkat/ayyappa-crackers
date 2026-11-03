@@ -88,6 +88,29 @@ const CheckoutForm = ({ formData, onChange, onSubmit }) => (
       />
     </label>
 
+    <fieldset>
+      <legend className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Order taken by</legend>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {['Venkat', 'Vinay', 'Vineeth', 'Hari'].map((member) => (
+          <label
+            key={member}
+            className="flex cursor-pointer items-center gap-2 rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-orange-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+          >
+            <input
+              type="radio"
+              name="orderedOnBehalf"
+              value={member}
+              checked={formData.orderedOnBehalf === member}
+              onChange={onChange}
+              className="accent-orange-500"
+              required
+            />
+            {member}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+
     <button
       type="submit"
       className="w-full rounded-full bg-orange-500 px-5 py-3 text-base font-bold text-white transition hover:bg-orange-600"

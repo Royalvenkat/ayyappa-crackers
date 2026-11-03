@@ -5,9 +5,22 @@ import OrderSummary from '../components/OrderSummary'
 import { getAutoDiscount, useCart } from '../context/CartContext'
 
 const SHOP_EMAIL = 'ayyappacrackers@gmail.com'
+const WHATSAPP_RECIPIENT = '918801235761'
 const ORDER_STORAGE_KEY = 'ayyappa_orders'
 
 const formatMoney = (amount) => `₹${Number(amount || 0).toLocaleString('en-IN')}`
+const escapeHtml = (value) =>
+  String(value).replace(/[&<>"']/g, (character) => {
+    const entities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }
+
+    return entities[character]
+  })
 
 const loadSavedOrders = () => {
   try {
@@ -24,6 +37,7 @@ const initialFormData = {
   email: '',
   address: '',
   landmark: '',
+  orderedOnBehalf: '',
   deliveryDate: '',
 }
 
@@ -69,10 +83,11 @@ const Checkout = () => {
       email,
       address,
       landmark,
+      orderedOnBehalf,
       deliveryDate,
     } = formData
 
-    if (!name.trim() || !phone.trim() || !address.trim() || !deliveryDate) {
+    if (!name.trim() || !phone.trim() || !address.trim() || !orderedOnBehalf || !deliveryDate) {
       alert('Please fill in all required details before submitting your order.')
       return
     }
@@ -87,24 +102,50 @@ const Checkout = () => {
       return
     }
 
-    const itemRows = cart
-      .map(
-        (item) => `| ${item.name} | ${item.qty} | ${formatMoney(item.price * item.qty)} |`,
-      )
-      .join('\n')
-
     const customerRows = [
-      `| Name | ${name.trim()} |`,
-      `| Phone | ${phone} |`,
-      `| Email | ${email || 'Not provided'} |`,
-      `| Address | ${address} |`,
-      landmark?.trim() ? `| Landmark | ${landmark.trim()} |` : null,
-      `| Delivery Date | ${deliveryDate} |`,
+      ['Name', name.trim()],
+      ['Phone', phone],
+      ['Email', email || 'Not provided'],
+      ['Address', address],
+      landmark?.trim() ? ['Landmark', landmark.trim()] : null,
+      ['Order taken by', orderedOnBehalf],
+      ['Delivery Date', deliveryDate],
     ]
       .filter(Boolean)
-      .join('\n')
+      .map(
+        ([field, value]) =>
+          `<tr><td>${escapeHtml(field)}</td><td>${escapeHtml(value)}</td></tr>`,
+      )
+      .join('')
 
-    const orderText = `Ayyappa Crackers Order Confirmation\n\nCustomer Details:\n| Field | Value |\n| --- | --- |\n${customerRows}\n\nOrder Items:\n| Item | Qty | Amount |\n| --- | --- | --- |\n${itemRows}\n\n| Subtotal | ${formatMoney(subtotal)} |\n| Discount | ${formatMoney(discountAmount)} |\n| Grand Total | ${formatMoney(finalTotal)} |\n\nThis order has been submitted successfully. Thank you for shopping with Ayyappa Crackers.`
+    const itemRows = cart
+      .map(
+        (item) =>
+          `<tr><td>${escapeHtml(item.name)}</td><td>${item.qty}</td><td>${formatMoney(item.price * item.qty)}</td></tr>`,
+      )
+      .join('')
+
+    const orderText = `
+      <h1>Ayyappa Crackers Order Confirmation</h1>
+      <h2>Customer Details</h2>
+      <table border="1">
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>${customerRows}</tbody>
+      </table>
+      <h2>Order Items</h2>
+      <table border="1">
+        <thead><tr><th>Item</th><th>Qty</th><th>Amount</th></tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <table border="1">
+        <tbody>
+          <tr><td>Subtotal</td><td>${formatMoney(subtotal)}</td></tr>
+          <tr><td>Discount</td><td>${formatMoney(discountAmount)}</td></tr>
+          <tr><td>Grand Total</td><td>${formatMoney(finalTotal)}</td></tr>
+        </tbody>
+      </table>
+      <p>This order has been submitted successfully. Thank you for shopping with Ayyappa Crackers.</p>
+    `
 
     const orderId = `AYP-${Date.now().toString().slice(-8)}`
     const orderRecord = {
@@ -114,6 +155,7 @@ const Checkout = () => {
       email: email || 'Not provided',
       address,
       landmark: landmark?.trim() || 'Not provided',
+      orderedOnBehalf,
       deliveryDate,
       subtotal,
       discountAmount,
@@ -131,8 +173,8 @@ const Checkout = () => {
           `- *${item.name}* | Qty: ${item.qty} | Amount: *${formatMoney(item.price * item.qty)}*`,
       )
       .join('\n')
-    const cleanWhatsAppText = `Order Confirmation\nOrder ID: ${orderId}\n\nCustomer Details\nName: *${name.trim()}*\nMobile: *${phone}*\nEmail: ${email || 'Not provided'}\nAddress: ${address}\n${landmark?.trim() ? `Landmark: ${landmark.trim()}\n` : ''}Delivery Date: ${deliveryDate}\n\nOrder Items\n${whatsappItemLines}\n\nSubtotal: *${formatMoney(subtotal)}*\nDiscount: *${formatMoney(discountAmount)}*\nGrand Total: *${formatMoney(finalTotal)}*`
-    const whatsappUrl = `https://wa.me/8801235761?text=${encodeURIComponent(cleanWhatsAppText)}`
+    const cleanWhatsAppText = `Order Confirmation\nOrder ID: ${orderId}\n\nCustomer Details\nName: *${name.trim()}*\nMobile: *${phone}*\nEmail: ${email || 'Not provided'}\nAddress: ${address}\n${landmark?.trim() ? `Landmark: ${landmark.trim()}\n` : ''}Order taken by: *${orderedOnBehalf}*\nDelivery Date: ${deliveryDate}\n\nOrder Items\n${whatsappItemLines}\n\nSubtotal: *${formatMoney(subtotal)}*\nDiscount: *${formatMoney(discountAmount)}*\nGrand Total: *${formatMoney(finalTotal)}*`
+    const whatsappUrl = `https://wa.me/${WHATSAPP_RECIPIENT}?text=${encodeURIComponent(cleanWhatsAppText)}`
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
 
     const customerMailTo = email
@@ -190,6 +232,7 @@ const Checkout = () => {
                 <tr className="bg-orange-50 dark:bg-slate-900/60">
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Order ID</th>
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Customer</th>
+                  <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Order taken by</th>
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Phone</th>
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Date</th>
                   <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-100">Total</th>
@@ -200,6 +243,7 @@ const Checkout = () => {
                   <tr key={order.id} className="hover:bg-orange-50/60 dark:hover:bg-slate-700/60">
                     <td className="px-4 py-3 font-bold text-[#B45309] dark:text-[#FFD54F]">{order.id}</td>
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{order.customerName}</td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{order.orderedOnBehalf || '—'}</td>
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{order.phone}</td>
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{order.deliveryDate}</td>
                     <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">{formatMoney(order.finalTotal)}</td>
